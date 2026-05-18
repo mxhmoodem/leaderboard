@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HSBC Sustainability Tracker — Leaderboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="app">
+
+    <!-- ============ TOP BAR ============ -->
+    <header class="topbar">
+      <a href="#leaderboard" class="brand" aria-label="HSBC home">
+        <img class="brand-logo" src="hsbclogo.png" alt="" aria-hidden="true">
+        <span class="brand-word">HSBC</span>
+      </a>
+
+      <div class="topbar-right">
+        <a href="#" class="topbar-link">Account Settings</a>
+        <span class="topbar-sep" aria-hidden="true"></span>
+        <a href="#" class="topbar-link">Help and Support</a>
+        <span class="topbar-sep" aria-hidden="true"></span>
+        <a href="#" class="topbar-link">Leave us feedback</a>
+        <button class="logout-btn" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.6"/>
+            <path d="M5 20c1.4-3.4 4-5 7-5s5.6 1.6 7 5"/>
+          </svg>
+          <span>Log out</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ============ TAB BAR ============ -->
+    <nav class="tabbar" role="tablist">
+      <a class="tab" role="tab" href="#sustainability-hub" data-tab="sustainability-hub">Sustainability hub</a>
+      <a class="tab" role="tab" href="#my-performance" data-tab="my-performance">My performance</a>
+      <a class="tab" role="tab" href="#financing-tools" data-tab="financing-tools">Financing &amp; tools</a>
+      <a class="tab" role="tab" href="#action-plan" data-tab="action-plan">Action plan</a>
+      <a class="tab" role="tab" href="#content-hub" data-tab="content-hub">Content hub</a>
+      <a class="tab" role="tab" href="#leaderboard" data-tab="leaderboard">Leaderboard</a>
+    </nav>
+
+    <!-- ============ DEV TOOLS BAR ============ -->
+    <div class="devbar" aria-label="Dev mode tweaks">
+      <span class="devbar-label">Dev</span>
+      <label class="devbar-field">
+        <span>Persona</span>
+        <select id="dev-persona">
+          <option value="supplier">Supplier</option>
+          <option value="admin">HSBC admin</option>
+        </select>
+      </label>
+      <label class="devbar-field">
+        <span>Privacy</span>
+        <select id="dev-privacy">
+          <option value="blur" selected>Blur</option>
+          <option value="codename">Codename</option>
+          <option value="redact">Redact</option>
+        </select>
+      </label>
+      <label class="devbar-field">
+        <span>Viewer</span>
+        <select id="dev-viewer"></select>
+      </label>
+      <label class="devbar-field devbar-toggle">
+        <input type="checkbox" id="dev-ai-open" checked>
+        <span>AI panel</span>
+      </label>
+    </div>
+
+    <!-- ============ TAB PANELS ============ -->
+    <main class="tab-panels">
+
+      <!-- ============ SUSTAINABILITY HUB PANEL ============ -->
+      <section class="tab-panel hub-panel" data-panel="sustainability-hub">
+
+        <!-- Welcome hero -->
+        <div class="hub-hero">
+          <div class="hub-hero-text">
+            <p class="hub-welcome">Welcome</p>
+            <h1 class="hub-name">dave</h1>
+            <p class="hub-intro">
+              Sustainability Tracker has been designed to help businesses navigate
+              both the risks and opportunities associated with sustainability.
+            </p>
+            <p class="hub-intro">
+              Whether you're looking for more information or looking for solutions
+              and financing, we are here to help.
+            </p>
+          </div>
+          <div class="hub-hero-art" aria-hidden="true">
+            <svg viewBox="0 0 520 360" xmlns="http://www.w3.org/2000/svg" role="img">
+              <polygon points="80,40 520,40 520,300 200,300" fill="#e7e7e7"/>
+              <polygon points="200,300 520,300 520,360 260,360" fill="#f1f1f1"/>
+
+              <g>
+                <ellipse cx="430" cy="172" rx="34" ry="8" fill="#2a3a55"/>
+                <path d="M396 172 L404 268 Q404 282 430 282 Q456 282 456 268 L464 172 Z" fill="#2c3e5c"/>
+                <rect x="402" y="190" width="56" height="14" fill="#f3f3f3"/>
+                <ellipse cx="430" cy="172" rx="28" ry="6" fill="#1f2d44"/>
+              </g>
+
+              <g stroke="#d94555" stroke-width="3.5" fill="none">
+                <circle cx="402" cy="312" r="14"/>
+                <circle cx="438" cy="312" r="14"/>
+                <path d="M416 312 L424 312"/>
+              </g>
+              <circle cx="402" cy="312" r="11" fill="#f4b8b8" opacity="0.7"/>
+              <circle cx="438" cy="312" r="11" fill="#f4b8b8" opacity="0.7"/>
+
+              <polygon points="148,300 360,330 408,300 220,272" fill="#3a4d6e"/>
+              <polygon points="148,300 360,330 358,338 148,308" fill="#2a3a55"/>
+
+              <polygon points="244,303 320,313 332,307 256,298" fill="#2c3e5c"/>
+
+              <polygon points="172,108 376,108 408,300 220,272" fill="#3a4d6e"/>
+              <polygon points="180,116 372,116 400,290 220,266" fill="#f7d3d3"/>
+              <polygon points="192,128 360,128 384,278 232,256" fill="#f9dede"/>
+
+              <g transform="translate(288,200)">
+                <polygon points="0,-32 28,-16 28,16 0,32 -28,16 -28,-16" fill="#fff"/>
+                <polygon points="0,-32 28,-16 0,0" fill="#DB0011"/>
+                <polygon points="28,16 0,32 0,0" fill="#DB0011"/>
+                <polygon points="-28,-16 0,-32 0,0" fill="#fff" stroke="#DB0011" stroke-width="1"/>
+                <polygon points="-28,16 0,32 0,0" fill="#fff" stroke="#DB0011" stroke-width="1"/>
+                <polygon points="0,-32 28,-16 28,16 0,32 -28,16 -28,-16" fill="none" stroke="#DB0011" stroke-width="2"/>
+              </g>
+
+              <circle cx="200" cy="138" r="2" fill="#d94555"/>
+              <circle cx="208" cy="138" r="2" fill="#d94555"/>
+              <circle cx="216" cy="138" r="2" fill="#d94555"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Get started -->
+        <section class="hub-section">
+          <h2 class="hub-section-title"><span class="hub-section-bar" aria-hidden="true"></span>Get started</h2>
+          <div class="hub-cards">
+            <a href="#" class="hub-card">
+              <div class="hub-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none" stroke="#3a3a3a" stroke-width="2" stroke-linecap="round">
+                  <line x1="10" y1="50" x2="10" y2="44"/>
+                  <line x1="18" y1="50" x2="18" y2="36"/>
+                  <line x1="26" y1="50" x2="26" y2="40"/>
+                  <line x1="34" y1="50" x2="34" y2="30"/>
+                  <line x1="42" y1="50" x2="42" y2="34"/>
+                  <line x1="50" y1="50" x2="50" y2="24"/>
+                  <line x1="6" y1="54" x2="56" y2="54"/>
+                  <circle cx="42" cy="18" r="8"/>
+                  <line x1="48" y1="24" x2="54" y2="30"/>
+                </svg>
+              </div>
+              <span class="hub-card-text">Continue your self-assessment</span>
+              <span class="hub-card-arrow" aria-hidden="true">›</span>
+            </a>
+
+            <a href="#" class="hub-card">
+              <div class="hub-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none" stroke="#3a3a3a" stroke-width="2" stroke-linecap="round">
+                  <path d="M32 14 C24 14 20 20 20 26 C20 32 24 34 24 40 L40 40 C40 34 44 32 44 26 C44 20 40 14 32 14 Z"/>
+                  <line x1="26" y1="44" x2="38" y2="44"/>
+                  <line x1="28" y1="48" x2="36" y2="48"/>
+                  <line x1="32" y1="8" x2="32" y2="4"/>
+                  <line x1="18" y1="14" x2="15" y2="11"/>
+                  <line x1="46" y1="14" x2="49" y2="11"/>
+                  <line x1="14" y1="26" x2="10" y2="26"/>
+                  <line x1="50" y1="26" x2="54" y2="26"/>
+                </svg>
+              </div>
+              <span class="hub-card-text">Explore your Content hub</span>
+              <span class="hub-card-arrow" aria-hidden="true">›</span>
+            </a>
+
+            <a href="#financing-tools" class="hub-card">
+              <div class="hub-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none" stroke="#3a3a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 12 L24 18 L20 22 L14 16 C12 20 14 26 18 30 L34 46 L40 40 L24 24"/>
+                  <path d="M42 14 L52 24 L46 30 L36 20 Z"/>
+                  <line x1="44" y1="32" x2="50" y2="38"/>
+                  <path d="M48 36 L54 42 L48 48 L42 42 Z"/>
+                </svg>
+              </div>
+              <span class="hub-card-text">Explore Financing &amp; tools</span>
+              <span class="hub-card-arrow" aria-hidden="true">›</span>
+            </a>
+
+            <a href="#" class="hub-card">
+              <div class="hub-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none" stroke="#3a3a3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="22" cy="22" r="6"/>
+                  <path d="M12 44 C12 38 16 34 22 34 C28 34 32 38 32 44"/>
+                  <circle cx="44" cy="26" r="6"/>
+                  <path d="M34 48 C34 42 38 38 44 38 C50 38 54 42 54 48"/>
+                  <rect x="34" y="10" width="18" height="12" rx="1"/>
+                  <path d="M36 22 L36 26 L40 22"/>
+                </svg>
+              </div>
+              <span class="hub-card-text">Speak to HSBC about your financing needs</span>
+              <span class="hub-card-arrow" aria-hidden="true">›</span>
+            </a>
+          </div>
+        </section>
+
+        <!-- Financing & tools -->
+        <section class="hub-section">
+          <div class="hub-section-head">
+            <h2 class="hub-section-title"><span class="hub-section-bar" aria-hidden="true"></span>Financing &amp; tools</h2>
+            <a href="#financing-tools" class="btn btn-secondary hub-section-cta">Go to Financing &amp; tools</a>
+          </div>
+          <div class="hub-feature-grid">
+            <div class="hub-feature">
+              <div class="hub-feature-img hub-feature-img--crane" role="img" aria-label="Industrial crane against blue sky"></div>
+            </div>
+            <div class="hub-feature">
+              <div class="hub-feature-img hub-feature-img--solar" role="img" aria-label="Solar panels"></div>
+            </div>
+            <div class="hub-feature">
+              <div class="hub-feature-img hub-feature-img--water" role="img" aria-label="Runner near water"></div>
+            </div>
+          </div>
+        </section>
+
+      </section>
+      <section class="tab-panel placeholder-panel" data-panel="my-performance">
+        <div class="placeholder-card">
+          <h2>My performance</h2>
+          <p>Existing dashboard tab. Not part of this build.</p>
+        </div>
+      </section>
+      <section class="tab-panel placeholder-panel" data-panel="financing-tools">
+        <div class="placeholder-card">
+          <h2>Financing &amp; tools</h2>
+          <p>Existing dashboard tab. Not part of this build.</p>
+        </div>
+      </section>
+      <section class="tab-panel placeholder-panel" data-panel="action-plan">
+        <div class="placeholder-card">
+          <h2>Action plan</h2>
+          <p>Existing dashboard tab. Not part of this build.</p>
+        </div>
+      </section>
+      <section class="tab-panel placeholder-panel" data-panel="content-hub">
+        <div class="placeholder-card">
+          <h2>Content hub</h2>
+          <p>Existing dashboard tab. Not part of this build.</p>
+        </div>
+      </section>
+
+      <!-- ============ LEADERBOARD PANEL ============ -->
+      <section class="tab-panel leaderboard-panel" data-panel="leaderboard">
+
+        <!-- Page header -->
+        <header class="page-header">
+          <div class="page-header-left">
+            <h1 class="page-title">Leaderboard</h1>
+            <!-- <p class="page-sub">
+              Anonymised ranking of suppliers across the HSBC supply chain.
+              Only your own organisation is identified — competitor names are
+              redacted to protect supplier privacy.
+            </p> -->
+          </div>
+          <div class="page-header-right">
+            <div class="page-meta">
+              <span id="meta-stamped">0</span><span class="muted">/</span><span id="meta-total">0</span>
+              <span class="muted"> stamped · updated <span id="meta-date">—</span></span>
+            </div>
+            <button class="btn btn-secondary" id="btn-export">Export CSV</button>
+            <button class="btn btn-secondary" id="btn-compare">Compare ▾</button>
+          </div>
+        </header>
+
+        <!-- Two-column layout -->
+        <div class="board-layout">
+
+          <div class="board-main">
+
+            <!-- Filter bar -->
+            <div class="filterbar">
+              <div class="select-wrap">
+                <select id="f-category" data-filter="category"></select>
+              </div>
+              <div class="select-wrap">
+                <select id="f-area" data-filter="area"></select>
+              </div>
+              <div class="select-wrap">
+                <select id="f-region" data-filter="region"></select>
+              </div>
+              <div class="select-wrap">
+                <select id="f-period" data-filter="period"></select>
+              </div>
+              <div class="filterbar-divider" aria-hidden="true"></div>
+              <span class="filterbar-label">Rank by</span>
+              <div class="select-wrap">
+                <select id="f-rankby" data-filter="rankBy">
+                  <option value="esg">ESG Composite</option>
+                  <option value="renewable">Renewable energy</option>
+                  <option value="scope3">Scope 3 emissions</option>
+                  <option value="water">Water usage</option>
+                  <option value="waste">Waste diverted</option>
+                  <option value="diversity">Workforce diversity</option>
+                  <option value="governance">Governance</option>
+                </select>
+              </div>
+              <button class="chip" id="f-stamped" aria-pressed="false">
+                <span class="chip-stamp" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 32 32"><polygon points="16,2 30,10 30,22 16,30 2,22 2,10" fill="#DB0011"/><path d="M10 16.2 L14 20 L22 12" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                HSBC stamped only
+                <span class="chip-count" id="f-stamped-count">0</span>
+              </button>
+            </div>
+
+            <!-- Viewer summary strip -->
+            <div class="summary-strip" id="summary-strip"></div>
+
+            <!-- Leaderboard table -->
+            <div class="table-card">
+              <table class="lb-table">
+                <thead>
+                  <tr>
+                    <th class="th-rank">Rank</th>
+                    <th class="th-supplier">Supplier</th>
+                    <th class="th-sector">Sector</th>
+                    <th class="th-num" data-col="renewable">Renewable %</th>
+                    <th class="th-num" data-col="scope3">Scope 3</th>
+                    <th class="th-num" data-col="water">Water</th>
+                    <th class="th-num" data-col="waste">Waste %</th>
+                    <th class="th-num" data-col="diversity">Diversity</th>
+                    <th class="th-num" data-col="esg">ESG</th>
+                    <th class="th-stamp">Stamp</th>
+                    <th class="th-exp" aria-hidden="true"></th>
+                  </tr>
+                </thead>
+                <tbody id="lb-body"></tbody>
+              </table>
+
+              <div class="table-foot">
+                <div class="muted" id="page-info">—</div>
+                <div class="pager" id="pager"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Coach sidebar -->
+          <aside class="ai-sidebar" id="ai-sidebar">
+            <header class="ai-header">
+              <div class="ai-avatar" aria-hidden="true">✦</div>
+              <div class="ai-head-text">
+                <div class="ai-name">Sustainability Coach <span class="ai-dot" aria-hidden="true"></span></div>
+                <div class="ai-sub">AI · trained on your sector</div>
+              </div>
+              <span class="ai-beta">BETA</span>
+            </header>
+
+            <div class="ai-snapshot" id="ai-snapshot"></div>
+
+            <div class="ai-goal" id="ai-goal"></div>
+
+            <div class="ai-thread" id="ai-thread"></div>
+
+            <div class="ai-prompts" id="ai-prompts">
+              <button class="ai-chip" data-prompt="stamp">✪ What do I need for the HSBC Stamp?</button>
+              <button class="ai-chip" data-prompt="peers">↗ How do I compare to peers?</button>
+              <button class="ai-chip" data-prompt="actions">✦ Top 3 actions to climb</button>
+              <button class="ai-chip" data-prompt="whatif">◇ If I hit 90% renewable, where would I rank?</button>
+              <button class="ai-chip" data-prompt="regulatory">! Flag regulatory risks for my sector</button>
+            </div>
+
+            <form class="ai-input" id="ai-input-form">
+              <input type="text" id="ai-input" placeholder="Ask about your ranking, peers, or improvements…" autocomplete="off">
+              <button type="submit" class="btn btn-primary">Ask</button>
+            </form>
+          </aside>
+        </div>
+
+      </section>
+    </main>
+  </div>
+</body>
+</html>
