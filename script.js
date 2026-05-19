@@ -39,7 +39,7 @@ const THRESHOLDS = {
 };
 
 const METRIC_LABELS = {
-  esg: 'ESG composite', renewable: 'Renewable electricity', scope3: 'Scope 3 emissions',
+  esg: 'Global score', renewable: 'Renewable electricity', scope3: 'Scope 3 emissions',
   water: 'Water usage', waste: 'Waste diverted', diversity: 'Workforce diversity',
   governance: 'Governance',
 };
@@ -54,6 +54,34 @@ const LOWER_IS_BETTER = { scope3: true, water: true };
 
 const PAGE_SIZE = 20;
 const UPDATED_DATE = '14 May 2026';
+
+/* ====================== GLOBAL SCORE RUBRIC ======================
+   Balanced-ESG weights. Each sub-score is 0–100, percentile-ranked
+   within sector. Final = Σ(weight × subScore) × confidenceFactor.
+================================================================= */
+const SCORE_WEIGHTS = {
+  emissionsIntensity: 0.30, // HSBC-attributed tCO₂e per £ spend
+  emissionsAbsolute:  0.10, // total tCO₂e footprint
+  renewables:         0.15,
+  water:              0.10,
+  waste:              0.10,
+  diversity:          0.10,
+  governance:         0.15, // includes disclosure / data quality / targets
+};
+
+const CONFIDENCE_FACTOR = {
+  Assured: 1.00,
+  'Self-reported': 0.90,
+  Estimated: 0.80,
+};
+
+// Sector ESG-risk index (higher = more inherent risk; lowers score modestly)
+const SECTOR_RISK = {
+  Energy: 'High', Automotive: 'High', Construction: 'High', Textiles: 'High',
+  Pharmaceuticals: 'Medium', Electronics: 'Medium', Logistics: 'Medium',
+  'Food & Beverage': 'Medium', Telecoms: 'Medium',
+  Finance: 'Low', Consulting: 'Low', 'IT Services': 'Low',
+};
 
 /* ============================ HELPERS ============================ */
 
@@ -202,34 +230,116 @@ function buildSuppliers() {
     diversity = round(diversity);
     governance = round(governance);
 
-    // ESG composite: weighted blend.
-    const renN = renewable;                                   // 0–100
-    const scope3N = clamp(100 - (scope3 / 2000), 0, 100);     // lower is better
-    const waterN = clamp(100 - (water / 12000), 0, 100);      // lower is better
-    const esg = clamp(round(
-      renN * 0.20 + scope3N * 0.22 + waterN * 0.10 +
-      waste * 0.12 + diversity * 0.13 + governance * 0.23
+    // HSBC spend with this supplier (£m). Drives intensity calc.
+    const spendGBP = round(base(0.4, 18) * 1_000_000);
+
+    // Disclosure / data-quality score (0–100). Composite of typical signals.
+    const disclosure = clamp(round(
+      governance * 0.45 +
+      (renewable > 50 ? 18 : 8) +
+      (scope3 < 90000 ? 18 : 8) +
+      (diversity > 55 ? 12 : 6) +
+      base(-4, 6)
     ), 0, 100);
 
-    // 12-month trend ending at esg (gentle walk).
-    const trend = [];
-    let t = clamp(esg - base(-4, 8), 30, 95);
-    for (let m = 0; m < 12; m++) {
-      t += base(-2.4, 2.4);
-      trend.push(round(clamp(t, 30, 98), 1));
-    }
-    trend[11] = esg;
-    const delta = round(trend[11] - trend[8], 1);
+    // Confidence band — higher governance/disclosure → more assured data.
+    const confidence = disclosure >= 78 ? 'Assured'
+                     : disclosure >= 58 ? 'Self-reported'
+                     : 'Estimated';
 
     return {
       id, name, category, area, country,
       region: COUNTRY_TO_REGION[country] || 'EMEA',
       isViewer: false,
-      metrics: { renewable, scope3, water, waste, diversity, governance, esg },
-      trend, delta,
+      spendGBP,
+      confidence,
+      metrics: { renewable, scope3, water, waste, diversity, governance, disclosure, esg: 0 },
+      // Filled in by computeGlobalScores once we can percentile-rank across the cohort.
+      subScores: {},
+      trend: [], delta: 0,
       rank: 0, gates: [], hasStamp: false,
     };
   });
+}
+
+/* ===================== GLOBAL SCORING ENGINE =====================
+   Percentile-rank each metric within its sector (like-with-like),
+   apply weights, then multiply by data-confidence factor.
+================================================================ */
+
+function percentileRank(values, value, lowerIsBetter) {
+  // Returns 0–100. 100 = best in cohort.
+  if (values.length <= 1) return 75; // neutral baseline if no peers
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = sorted.findIndex(v => v >= value);
+  const position = idx === -1 ? sorted.length : idx;
+  const pct = (position / (sorted.length - 1)) * 100;
+  return clamp(lowerIsBetter ? 100 - pct : pct, 0, 100);
+}
+
+function sectorRiskScore(category) {
+  const band = SECTOR_RISK[category] || 'Medium';
+  return band === 'Low' ? 100 : band === 'Medium' ? 70 : 40;
+}
+
+function computeGlobalScores(suppliers) {
+  // Build sector cohorts (or fall back to whole cohort for tiny sectors).
+  const bySector = {};
+  for (const s of suppliers) (bySector[s.category] ||= []).push(s);
+
+  for (const s of suppliers) {
+    const peers = (bySector[s.category] && bySector[s.category].length >= 4)
+      ? bySector[s.category] : suppliers;
+
+    const intensity = s.metrics.scope3 / Math.max(s.spendGBP / 1_000_000, 0.1); // tCO₂e per £m
+    const peerIntensities = peers.map(p => p.metrics.scope3 / Math.max(p.spendGBP / 1_000_000, 0.1));
+
+    const sub = {
+      emissionsIntensity: round(percentileRank(peerIntensities, intensity, true)),
+      emissionsAbsolute:  round(percentileRank(peers.map(p => p.metrics.scope3), s.metrics.scope3, true)),
+      renewables:         round(percentileRank(peers.map(p => p.metrics.renewable), s.metrics.renewable, false)),
+      water:              round(percentileRank(peers.map(p => p.metrics.water), s.metrics.water, true)),
+      waste:              round(percentileRank(peers.map(p => p.metrics.waste), s.metrics.waste, false)),
+      diversity:          round(percentileRank(peers.map(p => p.metrics.diversity), s.metrics.diversity, false)),
+      governance:         round(percentileRank(peers.map(p => p.metrics.governance), s.metrics.governance, false)),
+      sectorRisk:         sectorRiskScore(s.category),
+      disclosure:         s.metrics.disclosure,
+      intensityValue:     round(intensity, 2),
+    };
+
+    // Weighted overall (pre-confidence)
+    const overallRaw =
+      sub.emissionsIntensity * SCORE_WEIGHTS.emissionsIntensity +
+      sub.emissionsAbsolute  * SCORE_WEIGHTS.emissionsAbsolute +
+      sub.renewables         * SCORE_WEIGHTS.renewables +
+      sub.water              * SCORE_WEIGHTS.water +
+      sub.waste              * SCORE_WEIGHTS.waste +
+      sub.diversity          * SCORE_WEIGHTS.diversity +
+      sub.governance         * SCORE_WEIGHTS.governance;
+
+    const confFactor = CONFIDENCE_FACTOR[s.confidence] ?? 0.85;
+    const overall = clamp(round(overallRaw * confFactor), 0, 100);
+
+    s.subScores = sub;
+    s.metrics.esg = overall;       // global score replaces old ESG composite
+    s.overallRaw = round(overallRaw);
+    s.confFactor = confFactor;
+  }
+
+  // Build 12-month trend now that the global score exists.
+  const r = rng(20260514 + 1);
+  for (const s of suppliers) {
+    const base = (lo, hi) => lo + r() * (hi - lo);
+    const trend = [];
+    let t = clamp(s.metrics.esg - base(-4, 8), 30, 95);
+    for (let m = 0; m < 12; m++) {
+      t += base(-2.4, 2.4);
+      trend.push(round(clamp(t, 30, 98), 1));
+    }
+    trend[11] = s.metrics.esg;
+    s.trend = trend;
+    s.delta = round(trend[11] - trend[8], 1);
+  }
 }
 
 /* ===================== STAMP / THRESHOLD ENGINE ===================== */
@@ -425,6 +535,146 @@ function sparklinePath(values, w, h, color) {
   </svg>`;
 }
 
+/* --- global score hero (the supplier's overall, weighted, confidence-adjusted score) --- */
+function renderGlobalScore() {
+  const el = $('#global-score');
+  const viewer = state.suppliers.find(s => s.id === state.viewerId);
+  if (!viewer || !el) return;
+
+  const overall = viewer.metrics.esg;
+  const grade = gradeFor(overall);
+  const sub = viewer.subScores;
+  const sectorPeers = state.suppliers.filter(s => s.category === viewer.category);
+  const sortedByScore = [...sectorPeers].sort((a, b) => b.metrics.esg - a.metrics.esg);
+  const sectorRank = sortedByScore.findIndex(s => s.id === viewer.id) + 1;
+  const globalSorted = [...state.suppliers].sort((a, b) => b.metrics.esg - a.metrics.esg);
+  const globalRank = globalSorted.findIndex(s => s.id === viewer.id) + 1;
+  const total = state.suppliers.length;
+
+  const trendColor = viewer.delta >= 0 ? '#1f8a5b' : '#DB0011';
+  const deltaSym = viewer.delta > 0 ? '+' : '';
+  const deltaArrow = viewer.delta > 0 ? '▲' : viewer.delta < 0 ? '▼' : '–';
+
+  // Weighted contributions (each sub × its weight) → next-best-action.
+  const components = [
+    { key: 'emissionsIntensity', label: 'HSBC-attributed emissions (intensity)', weight: SCORE_WEIGHTS.emissionsIntensity, score: sub.emissionsIntensity },
+    { key: 'emissionsAbsolute',  label: 'Absolute emissions footprint',          weight: SCORE_WEIGHTS.emissionsAbsolute,  score: sub.emissionsAbsolute },
+    { key: 'renewables',         label: 'Renewable electricity',                 weight: SCORE_WEIGHTS.renewables,         score: sub.renewables },
+    { key: 'water',              label: 'Water usage',                           weight: SCORE_WEIGHTS.water,              score: sub.water },
+    { key: 'waste',              label: 'Waste diverted',                        weight: SCORE_WEIGHTS.waste,              score: sub.waste },
+    { key: 'diversity',          label: 'Workforce diversity',                   weight: SCORE_WEIGHTS.diversity,          score: sub.diversity },
+    { key: 'governance',         label: 'ESG governance / disclosure',           weight: SCORE_WEIGHTS.governance,         score: sub.governance },
+  ];
+
+  const subBars = components.map(c => {
+    const contribution = (c.score * c.weight).toFixed(1);
+    return `<div class="gs-sub-row">
+      <span class="gs-sub-label">${c.label} <span class="gs-sub-weight">(${Math.round(c.weight * 100)}%)</span></span>
+      <span class="gs-sub-track"><span class="gs-sub-fill" style="width:${c.score}%"></span></span>
+      <span class="gs-sub-val">${c.score}<span class="gs-sub-unit">/100</span></span>
+      <span class="gs-sub-contrib">+${contribution}</span>
+    </div>`;
+  }).join('');
+
+  // Next-best-action = component where moving the score by 20 points gives the biggest gain.
+  const weakest = [...components].sort((a, b) => (a.score * a.weight) - (b.score * b.weight))[0];
+  const liftPts = round(Math.min(20, 100 - weakest.score) * weakest.weight * viewer.confFactor, 1);
+
+  // Confidence badge styling
+  const confClass = viewer.confidence === 'Assured' ? 'is-assured'
+                  : viewer.confidence === 'Self-reported' ? 'is-selfrep'
+                  : 'is-estimated';
+
+  // Stamp gate progress
+  const gatesTotal = viewer.gates.length;
+  const gatesPass = viewer.gates.filter(g => g.pass).length;
+
+  // Intensity comparison vs sector median (lower = better)
+  const sectorIntensities = sectorPeers.map(s => s.subScores.intensityValue).sort((a,b) => a - b);
+  const medIntensity = sectorIntensities[Math.floor(sectorIntensities.length / 2)] || 0;
+  const intensityDelta = ((sub.intensityValue - medIntensity) / Math.max(medIntensity, 0.01)) * 100;
+
+  el.innerHTML = `
+    <div class="gs-card">
+      <div class="gs-left">
+        <div class="gs-eyebrow">Your global sustainability score</div>
+        <div class="gs-dial">
+          <svg viewBox="0 0 120 120" width="160" height="160" aria-hidden="true">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#f0f0f0" stroke-width="10"/>
+            <circle cx="60" cy="60" r="52" fill="none"
+              stroke="${overall >= 78 ? '#1f8a5b' : overall >= 62 ? '#c98a00' : '#DB0011'}"
+              stroke-width="10" stroke-linecap="round"
+              stroke-dasharray="${(overall / 100) * 326.7} 326.7"
+              transform="rotate(-90 60 60)"/>
+            <text x="60" y="58" text-anchor="middle" font-size="28" font-weight="700" font-family="Public Sans, sans-serif" fill="#1a1a1a">${overall}</text>
+            <text x="60" y="76" text-anchor="middle" font-size="9" letter-spacing="1" fill="#666" font-family="Public Sans, sans-serif">OUT OF 100</text>
+          </svg>
+          <div class="gs-grade-wrap">
+            <span class="gs-grade grade ${gradeBand(grade)}">${grade}</span>
+            <span class="gs-confidence ${confClass}" title="Data confidence — ${(viewer.confFactor * 100).toFixed(0)}% multiplier applied">
+              ${viewer.confidence}
+            </span>
+          </div>
+        </div>
+        <div class="gs-meta">
+          <div class="gs-meta-row">
+            <span class="gs-meta-label">Sector rank</span>
+            <span class="gs-meta-val">#${sectorRank}<span class="gs-meta-sub">/${sectorPeers.length} ${escapeHTML(viewer.category)}</span></span>
+          </div>
+          <div class="gs-meta-row">
+            <span class="gs-meta-label">Global rank</span>
+            <span class="gs-meta-val">#${globalRank}<span class="gs-meta-sub">/${total}</span></span>
+          </div>
+          <div class="gs-meta-row">
+            <span class="gs-meta-label">Quarter</span>
+            <span class="gs-meta-val" style="color:${trendColor}">${deltaArrow} ${deltaSym}${viewer.delta}</span>
+          </div>
+          <div class="gs-meta-row">
+            <span class="gs-meta-label">HSBC Stamp</span>
+            <span class="gs-meta-val">${viewer.hasStamp ? '✓ Granted' : `${gatesPass}/${gatesTotal} gates`}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="gs-right">
+        <div class="gs-right-head">
+          <h3>Score breakdown · weighted by HSBC's balanced-ESG rubric</h3>
+          <p class="gs-right-sub">
+            Each sub-score is percentile-ranked against your sector peers (${escapeHTML(viewer.category)}, ${sectorPeers.length} suppliers),
+            then weighted and multiplied by your data-confidence factor (×${viewer.confFactor.toFixed(2)}).
+          </p>
+        </div>
+        <div class="gs-subscores">${subBars}</div>
+
+        <div class="gs-context">
+          <div class="gs-context-cell">
+            <div class="gs-ctx-label">Emissions intensity</div>
+            <div class="gs-ctx-val">${sub.intensityValue} <span class="gs-ctx-unit">tCO₂e / £m spend</span></div>
+            <div class="gs-ctx-meta ${intensityDelta < 0 ? 'good' : 'warn'}">
+              ${intensityDelta < 0 ? '▼' : '▲'} ${Math.abs(intensityDelta).toFixed(0)}% vs sector median (${medIntensity})
+            </div>
+          </div>
+          <div class="gs-context-cell">
+            <div class="gs-ctx-label">HSBC spend (TTM)</div>
+            <div class="gs-ctx-val">£${(viewer.spendGBP / 1_000_000).toFixed(1)}<span class="gs-ctx-unit">m</span></div>
+            <div class="gs-ctx-meta">Tier ${viewer.spendGBP > 8_000_000 ? '1 — strategic' : '2 — long-tail'}</div>
+          </div>
+          <div class="gs-context-cell">
+            <div class="gs-ctx-label">Sector risk</div>
+            <div class="gs-ctx-val">${SECTOR_RISK[viewer.category] || 'Medium'}</div>
+            <div class="gs-ctx-meta">${sub.sectorRisk}/100 contribution</div>
+          </div>
+          <div class="gs-context-cell gs-nba">
+            <div class="gs-ctx-label">Next best action</div>
+            <div class="gs-ctx-val gs-nba-val">${weakest.label}</div>
+            <div class="gs-ctx-meta">Moving this sub-score +20 → ≈ +${liftPts} pts on global score</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 /* --- viewer summary strip --- */
 function renderSummaryStrip() {
   const viewer = state.suppliers.find(s => s.id === state.viewerId);
@@ -543,7 +793,19 @@ function renderRow(s, sortMetric) {
   const isViewer = s.id === state.viewerId;
   const grade = gradeFor(s.metrics.esg);
   const opened = state.expandedId === s.id;
-  const td = (metric) => `<td class="td-num ${metric === sortMetric ? 'is-sortcol' : ''}">${fmtMetric(metric, s.metrics[metric])}</td>`;
+  const sameOrg = s.id === state.viewerId;
+  const seeRealValues = state.persona === 'admin' || sameOrg;
+  const privacyMask = (raw) => {
+    if (seeRealValues) return raw;
+    if (state.privacy === 'redact') return `<span class="name-redact" aria-label="redacted">${' '.repeat(8)}</span>`;
+    if (state.privacy === 'codename') return `<span class="name-codename">—</span>`;
+    return `<span class="name-blur">${raw}</span>`; // default: blur
+  };
+  const td = (metric) => {
+    const val = fmtMetric(metric, s.metrics[metric]);
+    const display = metric === 'scope3' ? privacyMask(val) : val;
+    return `<td class="td-num ${metric === sortMetric ? 'is-sortcol' : ''}">${display}</td>`;
+  };
   return `
     <tr class="row ${isViewer ? 'is-viewer' : ''}" data-id="${s.id}">
       <td><span class="rank-pill">#${s.rank}</span></td>
@@ -734,16 +996,9 @@ function nearestPeerGap(viewer) {
 function projectRankIfClosed(viewer, gate) {
   const clone = JSON.parse(JSON.stringify(state.suppliers));
   const target = clone.find(s => s.id === viewer.id);
-  if (gate.op === '>=') target.metrics[gate.metric] = gate.threshold;
-  else target.metrics[gate.metric] = gate.threshold;
-  // Re-derive ESG from new metrics.
-  const m = target.metrics;
-  const scope3N = clamp(100 - (m.scope3 / 2000), 0, 100);
-  const waterN = clamp(100 - (m.water / 12000), 0, 100);
-  target.metrics.esg = clamp(round(
-    m.renewable * 0.20 + scope3N * 0.22 + waterN * 0.10 +
-    m.waste * 0.12 + m.diversity * 0.13 + m.governance * 0.23
-  ), 0, 100);
+  target.metrics[gate.metric] = gate.threshold;
+  // Re-run the full global-score engine so sector percentiles update too.
+  computeGlobalScores(clone);
   for (const s of clone) {
     s.gates = computeGates(s);
     s.hasStamp = s.gates.length > 0 && s.gates.every(gt => gt.pass);
@@ -1130,6 +1385,7 @@ function csvEscape(s) {
 
 function rerenderAll() {
   syncFilterControls();
+  renderGlobalScore();
   renderTable();
   renderSummaryStrip();
   renderAISnapshot();
@@ -1148,6 +1404,7 @@ function syncFilterControls() {
 function init() {
   // Build data
   state.suppliers = buildSuppliers();
+  computeGlobalScores(state.suppliers);
   computeStamps(state.suppliers);
   recomputeRanks(state.suppliers, 'esg');
 
